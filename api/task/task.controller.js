@@ -2,7 +2,6 @@ import { logger } from '../../services/logger.service.js'
 import { taskService } from './task.service.js'
 
 export async function getTasks(req, res) {
-    console.log('getTasks', req.query)
     try {
         // const filterBy = {
         //     txt: req.query.txt || '',
@@ -59,6 +58,26 @@ export async function updateTask(req, res) {
     } catch (err) {
         logger.error('Failed to update task', err)
         res.status(400).send({ err: 'Failed to update task' })
+    }
+}
+
+export async function performTask(req, res) {
+    // const { loggedinUser, body: task } = req
+    // const { _id: userId, isAdmin } = loggedinUser
+
+    // if (!isAdmin && task.owner._id !== userId) {
+    //     res.status(403).send('Not your task...')
+    //     return
+    // }
+
+    try {
+        const taskId = req.params.id
+        const task = await taskService.getById(taskId)
+        const performTask = await taskService.perform(task, taskId)
+        res.json(performTask)
+    } catch (err) {
+        logger.error('Failed to perform task', err)
+        res.status(400).send({ err: 'Failed to perform task' })
     }
 }
 

@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { logger } from '../../services/logger.service.js'
 import { makeId } from '../../services/util.service.js'
 import { dbService } from '../../services/db.service.js'
+import { externalService } from '../../services/external.service.js'
 import { asyncLocalStorage } from '../../services/als.service.js'
 
 const PAGE_SIZE = 3
@@ -15,6 +16,7 @@ export const taskService = {
     update,
     addTaskMsg,
     removeTaskMsg,
+    perform
 }
 
 async function query(filterBy = {}) {
@@ -100,15 +102,14 @@ async function add(task) {
 }
 
 async function update(task) {
-    const taskToSave = { 
-        title: task.title, 
-        importance: task.importance,
+    const taskToSave = {
+        title: task.title,
         status: task.status,
         description: task.description,
         importance: task.importance,
-        // lastTriedAt: task.lastTriedAt.getTimestamp(),
+        lastTriedAt: task.lastTriedAt,
         triesCount: task.triesCount,
-     }
+    }
 
     try {
         const criteria = { _id: ObjectId.createFromHexString(task._id) }
@@ -120,6 +121,41 @@ async function update(task) {
         logger.error(`cannot update task ${task._id}`, err)
         throw err
     }
+}
+
+async function perform(task, taskId) {
+
+    const criteria = { _id: ObjectId.createFromHexString(taskId) }
+    let collection
+
+    try {
+        collection = await dbService.getCollection('task')
+    } catch (err) {
+        logger.error(`cannot find collection`, err)
+        throw err
+    }
+
+    try {
+        await collection.updateOne(criteria, { $set: { status: 'running' } })
+        await externalService.execute(task)
+        await collection.updateOne(criteria, {
+            $set: {
+                doneAt: Date.now(),
+                status: 'done'
+            }
+        })
+    } catch (error) {
+        await collection.updateOne(criteria, {
+            $set: { status: 'failed' },
+            $push: { errors: error.message }
+        })
+    } finally {
+        await collection.updateOne(criteria, {
+            $set: { lastTried: Date.now() },
+            $inc: { triesCount: 1 }
+        })
+    }
+    return task
 }
 
 async function addTaskMsg(taskId, msg) {
