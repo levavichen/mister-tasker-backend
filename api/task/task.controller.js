@@ -33,7 +33,7 @@ export async function addTask(req, res) {
     const { loggedinUser, body: task } = req
 
     try {
-        task.owner = loggedinUser
+        // task.owner = loggedinUser
         const addedTask = await taskService.add(task)
         res.json(addedTask)
     } catch (err) {

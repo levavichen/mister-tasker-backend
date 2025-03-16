@@ -138,24 +138,29 @@ async function perform(task, taskId) {
     try {
         await collection.updateOne(criteria, { $set: { status: 'running' } })
         await externalService.execute(task)
+
         await collection.updateOne(criteria, {
             $set: {
                 doneAt: Date.now(),
                 status: 'done'
             }
         })
+
     } catch (error) {
         await collection.updateOne(criteria, {
             $set: { status: 'failed' },
             $push: { errors: error.message }
         })
+
     } finally {
         await collection.updateOne(criteria, {
             $set: { lastTried: Date.now() },
             $inc: { triesCount: 1 }
         })
+
     }
-    return task
+    const updatedTask = await collection.findOne(criteria)
+    return updatedTask
 }
 
 async function addTaskMsg(taskId, msg) {
