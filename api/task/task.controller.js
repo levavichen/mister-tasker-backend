@@ -1,5 +1,8 @@
+import { ObjectId } from 'mongodb'
 import { logger } from '../../services/logger.service.js'
 import { taskService } from './task.service.js'
+
+let isWorkerOn = false
 
 export async function getTasks(req, res) {
     try {
@@ -62,22 +65,55 @@ export async function updateTask(req, res) {
 }
 
 export async function performTask(req, res) {
-    // const { loggedinUser, body: task } = req
-    // const { _id: userId, isAdmin } = loggedinUser
-
-    // if (!isAdmin && task.owner._id !== userId) {
-    //     res.status(403).send('Not your task...')
-    //     return
-    // }
+    const taskId = req.params.id
 
     try {
-        const taskId = req.params.id
-        const task = await taskService.getById(taskId)
-        const performTask = await taskService.perform(task, taskId)
-        res.json(performTask)
+        const task = await taskService.performTask(taskId)
+        res.json(task)
     } catch (err) {
         logger.error('Failed to perform task', err)
         res.status(400).send({ err: 'Failed to perform task' })
+    }
+}
+
+export async function toggleWorker(req, res) {
+    try {
+        console.log('isWorkerOn', isWorkerOn)
+        isWorkerOn = req.body.isWorkerRunning
+        if (isWorkerOn) {
+            runWorker()
+        }
+        res.send({ msg: `Toggled worker`, isWorkerOn })
+    } catch (err) {
+        logger.error('Failed to toggle worker', err)
+        res.status(400).send({ err: 'Failed to toggle worker' })
+    }
+}
+
+export async function runWorker() {
+    if (!isWorkerOn) {
+        console.log('Worker is not running')
+        return
+    }
+
+    var delay = 5000
+    try {
+        const task = await taskService.getNextTask()
+        if (task) {
+            try {
+                await taskService.performTask(task._id)
+            } catch (err) {
+                console.log(`Failed Task`, err)
+            } finally {
+                delay = 1
+            }
+        } else {
+            console.log('Snoozing... no tasks to perform')
+        }
+    } catch (err) {
+        console.log(`Failed getting next task to execute`, err)
+    } finally {
+        setTimeout(runWorker, delay)
     }
 }
 

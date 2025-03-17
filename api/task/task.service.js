@@ -16,7 +16,8 @@ export const taskService = {
     update,
     addTaskMsg,
     removeTaskMsg,
-    perform
+    performTask,
+    getNextTask,
 }
 
 async function query(filterBy = {}) {
@@ -123,44 +124,41 @@ async function update(task) {
     }
 }
 
-async function perform(task, taskId) {
+async function performTask(taskId) {
+    const collection = await dbService.getCollection('task')
+    const criteria = { _id: new ObjectId(taskId) }
+    const task = await collection.findOne(criteria)
 
-    const criteria = { _id: ObjectId.createFromHexString(taskId) }
-    let collection
+    task.status = 'running'
+    await collection.updateOne(criteria, { $set: task })
 
     try {
-        collection = await dbService.getCollection('task')
+        await externalService.execute(task)
+        task.status = 'done'
+        task.doneAt = Date.now()
     } catch (err) {
-        logger.error(`cannot find collection`, err)
+        task.status = 'failed'
+        task.errors.push(err)
+    } finally {
+        task.lastTried = Date.now()
+        task.triesCount += 1
+        await collection.updateOne(criteria, { $set: task })
+    }
+    return task
+}
+
+async function getNextTask() {
+    try {
+        const collection = await dbService.getCollection('task')
+        const nextTask = await collection.findOne(
+            { status: { $ne: 'done' } }
+        )
+        console.log('next task', nextTask)
+        return nextTask
+    } catch (err) {
+        logger.error('cannot get next task', err)
         throw err
     }
-
-    try {
-        await collection.updateOne(criteria, { $set: { status: 'running' } })
-        await externalService.execute(task)
-
-        await collection.updateOne(criteria, {
-            $set: {
-                doneAt: Date.now(),
-                status: 'done'
-            }
-        })
-
-    } catch (error) {
-        await collection.updateOne(criteria, {
-            $set: { status: 'failed' },
-            $push: { errors: error.message }
-        })
-
-    } finally {
-        await collection.updateOne(criteria, {
-            $set: { lastTried: Date.now() },
-            $inc: { triesCount: 1 }
-        })
-
-    }
-    const updatedTask = await collection.findOne(criteria)
-    return updatedTask
 }
 
 async function addTaskMsg(taskId, msg) {
@@ -191,6 +189,7 @@ async function removeTaskMsg(taskId, msgId) {
         throw err
     }
 }
+
 
 function _buildCriteria(filterBy) {
     const criteria = {
