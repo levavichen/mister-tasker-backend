@@ -151,7 +151,8 @@ async function getNextTask() {
     try {
         const collection = await dbService.getCollection('task')
         const nextTask = await collection.findOne(
-            { status: { $ne: 'done' } }
+            { status: { $ne: 'done' } },
+            { sort: { importance: -1, triesCount: 1 } }
         )
         console.log('next task', nextTask)
         return nextTask

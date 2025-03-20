@@ -99,17 +99,24 @@ export async function runWorker() {
     var delay = 5000
     try {
         const task = await taskService.getNextTask()
-        if (task) {
-            try {
-                await taskService.performTask(task._id)
-            } catch (err) {
-                console.log(`Failed Task`, err)
-            } finally {
-                delay = 1
-            }
-        } else {
-            console.log('Snoozing... no tasks to perform')
+        if (!task || task.triesCount > 5){
+            console.log('Worker has encounterd an error')
+            isWorkerOn = false
+            return null
         }
+            if (task) {
+                try {
+                    await taskService.performTask(task._id)
+                } catch (err) {
+                    console.log(`Failed Task`, err)
+                } finally {
+                    delay = 1
+                }
+            } else {
+                console.log('Snoozing... no tasks to perform')
+                isWorkerOn = false
+                return null
+            }
     } catch (err) {
         console.log(`Failed getting next task to execute`, err)
     } finally {
