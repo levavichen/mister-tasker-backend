@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb'
 import { logger } from '../../services/logger.service.js'
 import { taskService } from './task.service.js'
+import { socketService } from '../../services/socket.service.js'
 
 let isWorkerOn = false
 
@@ -36,8 +37,8 @@ export async function addTask(req, res) {
     const { loggedinUser, body: task } = req
 
     try {
-        // task.owner = loggedinUser
         const addedTask = await taskService.add(task)
+        socketService.broadcast({ type: 'task-updated', data: addedTask, userId: loggedinUser._id })
         res.json(addedTask)
     } catch (err) {
         logger.error('Failed to add task', err)
@@ -99,24 +100,24 @@ export async function runWorker() {
     var delay = 5000
     try {
         const task = await taskService.getNextTask()
-        if (!task || task.triesCount > 5){
+        if (!task || task.triesCount > 5) {
             console.log('Worker has encounterd an error')
             isWorkerOn = false
             return null
         }
-            if (task) {
-                try {
-                    await taskService.performTask(task._id)
-                } catch (err) {
-                    console.log(`Failed Task`, err)
-                } finally {
-                    delay = 1
-                }
-            } else {
-                console.log('Snoozing... no tasks to perform')
-                isWorkerOn = false
-                return null
+        if (task) {
+            try {
+                await taskService.performTask(task._id)
+            } catch (err) {
+                console.log(`Failed Task`, err)
+            } finally {
+                delay = 1
             }
+        } else {
+            console.log('Snoozing... no tasks to perform')
+            isWorkerOn = false
+            return null
+        }
     } catch (err) {
         console.log(`Failed getting next task to execute`, err)
     } finally {

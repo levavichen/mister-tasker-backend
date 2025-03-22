@@ -13,8 +13,8 @@ const router = express.Router()
 router.get('/', log, getTasks)
 router.get('/:id', log, getTaskById)
 
-// router.post('/', log, requireAuth, addTask)
-router.post('/', log, addTask)
+router.post('/', log, requireAuth, addTask)
+// router.post('/', log, addTask)
 
 // router.put('/:id', requireAuth, updateTask)
 router.put('/:id', updateTask)
