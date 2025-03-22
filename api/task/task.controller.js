@@ -7,14 +7,8 @@ let isWorkerOn = false
 
 export async function getTasks(req, res) {
     try {
-        // const filterBy = {
-        //     txt: req.query.txt || '',
-        //     importance: +req.query.importance || 0,
-        //     sortField: req.query.sortField || '',
-        //     sortDir: req.query.sortDir || 1,
-        //     pageIdx: req.query.pageIdx,
-        // }
-        const tasks = await taskService.query()
+        const filterBy = { txt: req.query.txt || '' }
+        const tasks = await taskService.query(filterBy)
         res.json(tasks)
     } catch (err) {
         logger.error('Failed to get tasks', err)

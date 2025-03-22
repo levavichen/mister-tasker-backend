@@ -20,38 +20,21 @@ export const taskService = {
     getNextTask,
 }
 
-async function query(filterBy = {}) {
+async function query(filterBy = { txt: '' }) {
+    console.log(filterBy)
     try {
+        const criteria = filterBy.txt ? { $text: { $search: filterBy.txt } } : {}
 
         const collection = await dbService.getCollection('task')
-        const tasks = await collection.find({}).toArray()
+        var tasksByTxt = await collection.find(criteria)
+
+        const tasks = tasksByTxt.toArray()
         return tasks
     } catch (err) {
         logger.error('cannot find tasks', err)
         throw err
     }
 }
-
-// async function query(filterBy = { txt: '' }) {
-//     console.log(filterBy)
-//     try {
-//         const criteria = _buildCriteria(filterBy)
-//         const sort = _buildSort(filterBy)
-
-//         const collection = await dbService.getCollection('task')
-//         var taskCursor = await collection.find(criteria, { sort })
-
-//         if (filterBy.pageIdx !== undefined) {
-//             taskCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
-//         }
-
-//         const tasks = taskCursor.toArray()
-//         return tasks
-//     } catch (err) {
-//         logger.error('cannot find tasks', err)
-//         throw err
-//     }
-// }
 
 async function getById(taskId) {
     try {
