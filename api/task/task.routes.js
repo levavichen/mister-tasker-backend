@@ -14,7 +14,6 @@ router.get('/', log, getTasks)
 router.get('/:id', log, getTaskById)
 
 router.post('/', log, requireAuth, addTask)
-// router.post('/', log, addTask)
 
 // router.put('/:id', requireAuth, updateTask)
 router.put('/:id', updateTask)
@@ -24,7 +23,7 @@ router.delete('/:id', removeTask)
 
 // router.delete('/:id', requireAuth, requireAdmin, removeTask)
 
-router.post('/:id/start', performTask)
+router.post('/:id/start', log, requireAuth, performTask)
 router.post('/worker/toggle', toggleWorker)
 router.post('/:id/msg', requireAuth, addTaskMsg)
 router.delete('/:id/msg/:msgId', requireAuth, removeTaskMsg)

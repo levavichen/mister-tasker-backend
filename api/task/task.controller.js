@@ -66,11 +66,14 @@ export async function updateTask(req, res) {
 }
 
 export async function performTask(req, res) {
+    const { loggedinUser } = req
+    console.log(loggedinUser)
     const taskId = req.params.id
 
     try {
-        const task = await taskService.performTask(taskId)
-        res.json(task)
+        const performedTask = await taskService.performTask(taskId)
+        socketService.broadcast({ type: 'task-updated', data: performedTask, userId: loggedinUser._id })
+        res.json(performedTask)
     } catch (err) {
         logger.error('Failed to perform task', err)
         res.status(400).send({ err: 'Failed to perform task' })
